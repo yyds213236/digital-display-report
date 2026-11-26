@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数码显示屏 · 可视化梳理文档</title>
+  <style>
+    /* ============================================================
+       设计系统变量：默认极简画廊亮色模式 + 可切换深色模式
+       ============================================================ */
+    :root,
+    [data-theme="light"] {
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-soft: #f9fafb;
+      --surface-hover: #f1f5f9;
+      --ink: #111827;
+      --ink-sub: #4b5563;
+      --ink-muted: #6b7280;
+      --line: rgba(17, 24, 39, 0.08);
+      --line-strong: rgba(17, 24, 39, 0.16);
+
+      --blue: #2563eb;
+      --blue-soft: rgba(37, 99, 235, 0.08);
+      --amber: #d97706;
+      --amber-soft: rgba(217, 119, 6, 0.09);
+      --violet: #7c3aed;
+      --violet-soft: rgba(124, 58, 237, 0.09);
+      --emerald: #059669;
+      --emerald-soft: rgba(5, 150, 105, 0.09);
+      --rose: #e11d48;
+      --rose-soft: rgba(225, 29, 72, 0.08);
+
+      --nav-bg: rgba(246, 247, 249, 0.86);
+      --shadow-card: 0 10px 30px rgba(17, 24, 39, 0.045), 0 1px 3px rgba(17, 24, 39, 0.03);
+      --shadow-hover: 0 18px 38px rgba(17, 24, 39, 0.075), 0 2px 6px rgba(17, 24, 39, 0.04);
+      --grid-dot: rgba(17, 24, 39, 0.055);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0b0e14;
+      --surface: #121722;
+      --surface-soft: #171d2b;
+      --surface-hover: #1d2536;
+      --ink: #f3f4f6;
+      --ink-sub: #cbd5e1;
+      --ink-muted: #94a3b8;
+      --line: rgba(148, 163, 184, 0.14);
+      --line-strong: rgba(148, 163, 184, 0.26);
+
+      --blue: #60a5fa;
+      --blue-soft: rgba(96, 165, 250, 0.14);
+      --amber: #fbbf24;
+      --amber-soft: rgba(251, 191, 36, 0.14);
+      --violet: #a78bfa;
+      --violet-soft: rgba(167, 139, 250, 0.14);
+      --emerald: #34d399;
+      --emerald-soft: rgba(52, 211, 153, 0.13);
+      --rose: #fb7185;
+      --rose-soft: rgba(251, 113, 133, 0.14);
+
+      --nav-bg: rgba(11, 14, 20, 0.85);
+      --shadow-card: 0 14px 36px rgba(0, 0, 0, 0.38);
+      --shadow-hover: 0 20px 46px rgba(0, 0, 0, 0.52);
+      --grid-dot: rgba(148, 163, 184, 0.07);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: var(--bg);
+      color: var(--ink);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* 细腻点阵装饰底纹 */
+    .bg-pattern {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+      background-size: 26px 26px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.25) 75%, transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.25) 75%, transparent 100%);
+    }
+
+    /* 顶部阅读进度条 */
+    .scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2.5px;
+      width: 0%;
+      z-index: 100;
+      background: linear-gradient(90deg, var(--blue), var(--violet), var(--amber));
+      transition: width 0.08s linear;
+    }
+
+    /* 顶部粘性玻璃导航栏 */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 4px var(--blue-soft);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--ink-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--ink);
+      background: var(--surface-hover);
+    }
+
+    .nav-links a.active {
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink-sub);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-btn:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .ctrl-btn.is-active {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: rgba(37, 99, 235, 0.35);
+    }
+
+    .edit-only {
+      display: none;
+    }
+
+    body.is-editing .edit-only {
+      display: inline-flex;
+    }
+
+    body.is-editing [contenteditable="true"] {
+      outline: 1.5px dashed rgba(37, 99, 235, 0.36);
+      outline-offset: 3px;
+      border-radius: 6px;
+      cursor: text;
+      transition: outline-color 0.18s ease, background-color 0.18s ease;
+    }
+
+    body.is-editing [contenteditable="true"]:hover {
+      outline-color: var(--blue);
+      background-color: var(--blue-soft);
+    }
+
+    body.is-editing [contenteditable="true"]:focus {
+      outline: 2px solid var(--blue);
+      background-color: var(--surface);
+    }
+
+    /* 主体容器 */
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 32px 24px 88px;
+    }
+
+    /* 通用卡片容器 */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 34px 36px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-card);
+      scroll-margin-top: 82px;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.3s ease,
+                  border-color 0.3s ease;
+    }
+
+    /* 滚动渐入动画 */
+    .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .js-animate .reveal:not(.is-visible) {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 封面 Hero */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 44px 42px;
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-soft) 100%);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      right: -110px;
+      top: -120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--blue-soft) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      color: var(--ink-sub);
+    }
+
+    .meta-pill.accent {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: transparent;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.22;
+      color: var(--ink);
+      margin-bottom: 14px;
+    }
+
+    .hero-subtitle {
+      font-size: 14.5px;
+      color: var(--ink-sub);
+      max-width: 720px;
+    }
+
+    .hero-index-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 26px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+    }
+
+    .index-chip {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.22s ease;
+    }
+
+    .index-chip:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
+    }
+
+    .index-chip span {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+
+    .index-chip strong {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    /* 章节头部 */
+    .sec-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .sec-num {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--blue);
+      background: var(--blue-soft);
+      padding: 3px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+    }
+
+    .sec-title {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+    }
+
+    /* ==================== 01. 行业主流产品/服务 ==================== */
+    .tier-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .tier-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px;
+      background: var(--surface-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.25s ease,
+                  border-color 0.25s ease;
+    }
+
+    .tier-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--tier-accent, var(--blue));
+    }
+
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 11px;
+      border-radius: 999px;
+      color: var(--tier-accent, var(--blue));
+      background: var(--tier-bg, var(--blue-soft));
+    }
+
+    .tier-price {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .tier-group-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink-muted);
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .tier-items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 14px;
+      color: var(--ink);
+    }
+
+    .tier-items li {
+      position: relative;
+      padding-left: 14px;
+    }
+
+    .tier-items li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--tier-accent, var(--blue));
+    }
+
+    .tier-service {
+      margin-top: auto;
+      padding: 13px 15px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-size: 13.5px;
+      color: var(--ink-sub);
+    }
+
+    /* ==================== 02. 主要成交模式和链路 ==================== */
+    .flow-diagram-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-soft);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .flow-dash {
+      stroke-dasharray: 6 6;
+      animation: flowMove 1.4s linear infinite;
+    }
+
+    @keyframes flowMove {
+      to { stroke-dashoffset: -12; }
+    }
+
+    .channel-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .channel-card {
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      transition: transform 0.22s ease, border-color 0.22s ease;
+    }
+
+    .channel-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--ch-color, var(--blue));
+    }
+
+    .channel-name {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: var(--ch-color, var(--blue));
+      background: var(--ch-bg, var(--blue-soft));
+      margin-bottom: 10px;
+    }
+
+    .channel-card p {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    /* ==================== 03. 人群需求处境 ==================== */
+    .demand-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .demand-card {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.24s ease, box-shadow 0.24s ease;
+    }
+
+    .demand-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .demand-tag {
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: var(--d-color, var(--blue));
+      background: var(--d-bg, var(--blue-soft));
+    }
+
+    .demand-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.65;
+    }
+
+    /* ==================== 04. 人群消费心理 ==================== */
+    .psych-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .psych-card {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.24s ease, border-color 0.24s ease;
+    }
+
+    .psych-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--line-strong);
+    }
+
+    .psych-label {
+      width: fit-content;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      color: var(--p-color, var(--emerald));
+      background: var(--p-bg, var(--emerald-soft));
+    }
+
+    .psych-card p {
+      font-size: 14.5px;
+      color: var(--ink);
+      line-height: 1.7;
+    }
+
+    .term-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: auto;
+      padding-top: 6px;
+    }
+
+    .term-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--amber);
+    }
+
+    /* ==================== 05 & 07 双列布局（销售话术 & 视频呈现） ==================== */
+    .split-two {
+      display: grid;
+      grid-template-columns: 0.78fr 1.22fr;
+      gap: 24px;
+    }
+
+    .pitch-box {
+      padding: 28px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, var(--violet-soft), var(--surface-soft));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      height: calc(100% - 62px);
+      min-height: 220px;
+    }
+
+    .pitch-quote {
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 850;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .pitch-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--violet);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
+
+    .video-card {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .video-showcase {
+      display: grid;
+      grid-template-columns: 196px 1fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .video-player-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      max-height: 440px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #090b10;
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .video-player {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #090b10;
+    }
+
+    .video-meta-col {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      justify-content: center;
+    }
+
+    .video-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .video-platform {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--blue);
+      background: var(--blue-soft);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .video-duration {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-sub);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+
+    .video-caption {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    .video-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .v-tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink-sub);
+    }
+
+    .video-link-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-size: 12.5px;
+      margin-top: auto;
+    }
+
+    .video-link-bar a {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .video-link-bar a:hover {
+      text-decoration: underline;
+    }
+
+    .video-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .copy-btn {
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .copy-btn.primary {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: transparent;
+    }
+
+    .copy-btn.primary:hover {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    /* 07 卡片行内编辑面板 */
+    .video-editor-panel {
+      margin-top: 16px;
+      padding: 18px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      display: grid;
+      gap: 12px;
+    }
+
+    .video-editor-panel.hidden {
+      display: none;
+    }
+
+    .editor-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 10px;
+    }
+
+    .editor-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .editor-field label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink-muted);
+    }
+
+    .editor-field input,
+    .editor-field textarea {
+      width: 100%;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .editor-field input:focus,
+    .editor-field textarea:focus {
+      border-color: var(--blue);
+    }
+
+    .editor-field textarea {
+      resize: vertical;
+      min-height: 60px;
+      line-height: 1.5;
+    }
+
+    .editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding-top: 4px;
+    }
+
+    .editor-upload-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .editor-file-name {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    @media (max-width: 600px) {
+      .editor-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 影院放大弹窗 */
+    .video-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: rgba(7, 10, 17, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .video-modal.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .video-modal-dialog {
+      position: relative;
+      width: min(440px, 92vw);
+      max-height: 90vh;
+      background: #090b10;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 28px 64px rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .video-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #f3f4f6;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 2px 4px;
+    }
+
+    .modal-close {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .video-modal-player {
+      width: 100%;
+      max-height: calc(90vh - 76px);
+      aspect-ratio: 9 / 16;
+      border-radius: 12px;
+      background: #000;
+      object-fit: contain;
+    }
+
+    /* ==================== 06. 不同人群的兴趣话题 ==================== */
+    .interest-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .interest-card {
+      padding: 20px 22px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: transform 0.22s ease, border-color 0.22s ease;
+    }
+
+    .interest-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--line-strong);
+    }
+
+    .interest-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12.5px;
+      font-weight: 800;
+      flex-shrink: 0;
+      background: var(--i-bg, var(--blue-soft));
+      color: var(--i-color, var(--blue));
+    }
+
+    .interest-card p {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    /* ==================== 08. 目标圈子的核心价值观 ==================== */
+    .ethos-card {
+      text-align: center;
+      padding: 44px 36px;
+      background: linear-gradient(135deg, var(--blue-soft) 0%, var(--surface) 50%, var(--amber-soft) 100%);
+      border-color: var(--line-strong);
+    }
+
+    .ethos-kicker {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--amber);
+      background: var(--amber-soft);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    .ethos-card blockquote {
+      font-size: clamp(22px, 3vw, 32px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1.38;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--ink);
+      color: var(--surface);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 120;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--ink-muted);
+      padding-top: 8px;
+    }
+
+    /* ============================================================
+       响应式与打印样式
+       ============================================================ */
+    @media (max-width: 1100px) {
+      .topbar-inner {
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        padding: 10px 18px;
+      }
+      .nav-links {
+        order: 3;
+        width: 100%;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 920px) {
+      .hero-index-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .tier-grid,
+      .channel-cards,
+      .demand-grid,
+      .psych-grid,
+      .split-two,
+      .interest-grid {
+        grid-template-columns: 1fr;
+      }
+      .pitch-box {
+        height: auto;
+        min-height: 0;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .video-showcase {
+        grid-template-columns: 1fr;
+      }
+      .video-player-wrap {
+        max-width: 240px;
+        margin: 0 auto;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .section-card, .hero, .ethos-card {
+        padding: 24px 18px;
+      }
+      .hero-index-strip {
+        grid-template-columns: 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+      .js-animate .reveal:not(.is-visible) {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @media print {
+      .topbar, .scroll-progress, .bg-pattern, .nav-actions, .copy-btn, .toast, .video-modal, .video-editor-panel, .edit-only {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+        color: #111 !important;
+      }
+      .section-card {
+        box-shadow: none !important;
+        border: 1px solid #e5e7eb !important;
+        break-inside: avoid;
+      }
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-pattern" aria-hidden="true"></div>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- 顶部导航栏 -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>数码显示屏</span>
+      </div>
+
+      <nav class="nav-links" aria-label="文档目录">
+        <a href="#sec-products" class="active">产品与服务</a>
+        <a href="#sec-channels">成交模式和链路</a>
+        <a href="#sec-demands">人群需求处境</a>
+        <a href="#sec-psychology">人群消费心理</a>
+        <a href="#sec-pitch-video">销售话术与视频</a>
+        <a href="#sec-interests">兴趣话题</a>
+        <a href="#sec-values">核心价值观</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="ctrl-btn" id="toggleEditModeBtn" type="button">✏️ 编辑文档</button>
+        <button class="ctrl-btn edit-only" id="exportHtmlBtn" type="button">导出 HTML</button>
+        <button class="ctrl-btn edit-only" id="resetEditBtn" type="button">恢复默认</button>
+        <button class="ctrl-btn" id="themeToggle" type="button">
+          <span id="themeIcon">🌙</span>
+          <span id="themeLabel">深色模式</span>
+        </button>
+        <button class="ctrl-btn" onclick="window.print()" type="button">导出 PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ==================== 封面 ==================== -->
+    <section class="section-card hero reveal is-visible">
+      <div class="hero-meta">
+        <span class="meta-pill accent">飞书云文档可视化整理</span>
+        <span class="meta-pill">作者：淮风衍</span>
+        <span class="meta-pill">共 8 个核心部分</span>
+      </div>
+      <h1>数码显示屏</h1>
+      <p class="hero-subtitle">
+        严格依据原文档内容进行视觉层级化与图文排版整理：涵盖行业主流产品/服务、主要成交模式和链路、人群需求处境、人群消费心理、销售话术、兴趣话题、主流视频呈现形式及目标圈子的核心价值观。
+      </p>
+
+      <div class="hero-index-strip">
+        <a class="index-chip" href="#sec-products">
+          <span>01 / 产品与服务</span>
+          <strong>500 – 8000+ 元三档分层</strong>
+        </a>
+        <a class="index-chip" href="#sec-channels">
+          <span>02 / 成交链路</span>
+          <strong>B 站 · 抖音 · 小红书</strong>
+        </a>
+        <a class="index-chip" href="#sec-psychology">
+          <span>03–04 / 需求与心理</span>
+          <strong>处境切片与消费顾虑</strong>
+        </a>
+        <a class="index-chip" href="#sec-values">
+          <span>05–08 / 内容与价值观</span>
+          <strong>视频话术与核心主张</strong>
+        </a>
+      </div>
+    </section>
+
+    <!-- ==================== 01. 行业主流产品/服务 ==================== -->
+    <section class="section-card reveal" id="sec-products">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2 class="sec-title">行业主流产品/服务</h2>
+      </div>
+
+      <div class="tier-grid">
+        <!-- 500-999元 -->
+        <article class="tier-card" style="--tier-accent: var(--blue); --tier-bg: var(--blue-soft);">
+          <span class="tier-badge">档位一</span>
+          <div class="tier-price">500–999元</div>
+          <div>
+            <div class="tier-group-label">主流产品</div>
+            <ul class="tier-items">
+              <li>24/27英寸 2K180Hz-240Hz Fast IPS 电竞屏</li>
+              <li>1080P/2K 办公护眼屏</li>
+            </ul>
+          </div>
+          <div class="tier-service">
+            <div class="tier-group-label" style="margin-bottom:4px;">配套服务</div>
+            标配 3 年整机质保 + 常规退换货；多数只包基础物流，不含支架安装
+          </div>
+        </article>
+
+        <!-- 1000-2500元 -->
+        <article class="tier-card" style="--tier-accent: var(--amber); --tier-bg: var(--amber-soft);">
+          <span class="tier-badge">档位二</span>
+          <div class="tier-price">1000–2500元</div>
+          <div>
+            <div class="tier-group-label">主流产品</div>
+            <ul class="tier-items">
+              <li>4K高色准设计屏</li>
+              <li>Type-C一线连办公屏</li>
+              <li>千级分区MiniLEDHDR屏</li>
+              <li>便携副屏</li>
+            </ul>
+          </div>
+          <div class="tier-service">
+            <div class="tier-group-label" style="margin-bottom:4px;">配套服务</div>
+            旋转升降支架、3 年上门保修或以换代修
+          </div>
+        </article>
+
+        <!-- 2000-8000+元 -->
+        <article class="tier-card" style="--tier-accent: var(--violet); --tier-bg: var(--violet-soft);">
+          <span class="tier-badge">档位三</span>
+          <div class="tier-price">2000–8000+元</div>
+          <div>
+            <div class="tier-group-label">主流产品</div>
+            <ul class="tier-items">
+              <li>2K/4K240Hz-480Hz+OLED 电竞屏</li>
+              <li>超高刷FPS职业赛用屏</li>
+            </ul>
+          </div>
+          <div class="tier-service">
+            <div class="tier-group-label" style="margin-bottom:4px;">配套服务</div>
+            重点兜底“烧屏焦虑”，通常提供 2-3 年烧屏保修、零亮点/完美屏承诺及高端上门换新
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ==================== 02. 主要成交模式和链路 ==================== -->
+    <section class="section-card reveal" id="sec-channels">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2 class="sec-title">主要成交模式和链路</h2>
+      </div>
+
+      <div class="flow-diagram-card">
+        <svg viewBox="0 0 820 190" role="img" aria-label="主要成交模式和链路示意图">
+          <!-- 左侧模式 -->
+          <rect x="16" y="55" width="170" height="80" rx="14" fill="var(--surface)" stroke="var(--blue)" stroke-width="1.6" />
+          <text x="101" y="88" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="700">达人博主推广</text>
+          <text x="101" y="112" text-anchor="middle" fill="var(--ink-muted)" font-size="12">内容种草 / 挂链带货</text>
+
+          <!-- 连线左到中 -->
+          <path d="M 186 95 C 235 95, 235 34, 286 34" fill="none" stroke="var(--blue)" stroke-width="2" class="flow-dash" />
+          <path d="M 186 95 L 286 95" fill="none" stroke="var(--amber)" stroke-width="2" class="flow-dash" />
+          <path d="M 186 95 C 235 95, 235 156, 286 156" fill="none" stroke="var(--rose)" stroke-width="2" class="flow-dash" />
+
+          <!-- 中间三大平台 -->
+          <rect x="286" y="12" width="248" height="44" rx="11" fill="var(--surface)" stroke="var(--blue)" stroke-width="1.4" />
+          <text x="410" y="39" text-anchor="middle" fill="var(--blue)" font-size="13" font-weight="700">B 站蓝链跳转京东 / 淘宝</text>
+
+          <rect x="286" y="73" width="248" height="44" rx="11" fill="var(--surface)" stroke="var(--amber)" stroke-width="1.4" />
+          <text x="410" y="100" text-anchor="middle" fill="var(--amber)" font-size="13" font-weight="700">抖音品牌自播间 / 达人带货小黄车</text>
+
+          <rect x="286" y="134" width="248" height="44" rx="11" fill="var(--surface)" stroke="var(--rose)" stroke-width="1.4" />
+          <text x="410" y="161" text-anchor="middle" fill="var(--rose)" font-size="13" font-weight="700">小红书桌搭博主笔记挂链 / 买手专场</text>
+
+          <!-- 连线中到右 -->
+          <path d="M 534 34 C 580 34, 580 95, 624 95" fill="none" stroke="var(--blue)" stroke-width="2" class="flow-dash" />
+          <path d="M 534 95 L 624 95" fill="none" stroke="var(--amber)" stroke-width="2" class="flow-dash" />
+          <path d="M 534 156 C 580 156, 580 95, 624 95" fill="none" stroke="var(--rose)" stroke-width="2" class="flow-dash" />
+
+          <!-- 右侧交付 -->
+          <rect x="624" y="55" width="180" height="80" rx="14" fill="var(--surface)" stroke="var(--emerald)" stroke-width="1.6" />
+          <text x="714" y="88" text-anchor="middle" fill="var(--emerald)" font-size="14" font-weight="800">传统电商线上交付</text>
+          <text x="714" y="112" text-anchor="middle" fill="var(--ink-muted)" font-size="12">线上订单履约</text>
+        </svg>
+      </div>
+
+      <div class="channel-cards">
+        <div class="channel-card" style="--ch-color: var(--blue); --ch-bg: var(--blue-soft);">
+          <span class="channel-name">B 站</span>
+          <p>蓝链跳转京东/淘宝</p>
+        </div>
+        <div class="channel-card" style="--ch-color: var(--amber); --ch-bg: var(--amber-soft);">
+          <span class="channel-name">抖音</span>
+          <p>品牌自播间 / 达人带货小黄车</p>
+        </div>
+        <div class="channel-card" style="--ch-color: var(--rose); --ch-bg: var(--rose-soft);">
+          <span class="channel-name">小红书</span>
+          <p>桌搭博主笔记挂链或买手专场</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 03. 人群需求处境 ==================== -->
+    <section class="section-card reveal" id="sec-demands">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2 class="sec-title">人群需求处境</h2>
+      </div>
+
+      <div class="demand-grid">
+        <article class="demand-card">
+          <span class="demand-tag" style="--d-color: var(--blue); --d-bg: var(--blue-soft);">处境 01 · 使用时长</span>
+          <p class="demand-text">连续 6 小时高强度使用的人</p>
+        </article>
+
+        <article class="demand-card">
+          <span class="demand-tag" style="--d-color: var(--violet); --d-bg: var(--violet-soft);">处境 02 · 装备落差</span>
+          <p class="demand-text">攒钱配了新主机却被 60Hz 老屏幕拖后腿的竞技玩家</p>
+        </article>
+
+        <article class="demand-card">
+          <span class="demand-tag" style="--d-color: var(--amber); --d-bg: var(--amber-soft);">处境 03 · 独居空间</span>
+          <p class="demand-text">24 岁刚毕业合租 12 平米单间下班累到不想社交的独居年轻人</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ==================== 04. 人群消费心理 ==================== -->
+    <section class="section-card reveal" id="sec-psychology">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2 class="sec-title">人群消费心理</h2>
+      </div>
+
+      <div class="psych-grid">
+        <div class="psych-card">
+          <span class="psych-label" style="--p-color: var(--emerald); --p-bg: var(--emerald-soft);">换屏直观感受</span>
+          <p>雾面屏换了之后，第一感觉就是画面不发闷，色彩透亮很多</p>
+        </div>
+
+        <div class="psych-card">
+          <span class="psych-label" style="--p-color: var(--amber); --p-bg: var(--amber-soft);">参数理解门槛</span>
+          <p>对于很多小白参数黑话太多看不懂，怕买到缩水阉割版</p>
+          <div class="term-pills">
+            <span class="term-pill">色域容积 vs 覆盖</span>
+            <span class="term-pill">GTG 响应时间</span>
+            <span class="term-pill">DC 调光</span>
+          </div>
+        </div>
+
+        <div class="psych-card">
+          <span class="psych-label" style="--p-color: var(--rose); --p-bg: var(--rose-soft);">品控与售后顾虑</span>
+          <p>怕踩品控雷：最怕买到次品，以及大件退换货搬运麻烦</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 05 & 07. 销售话术与视频呈现形式 ==================== -->
+    <section class="section-card reveal" id="sec-pitch-video">
+      <div class="split-two">
+        <!-- 05. 本行业主流产品的销售话术 -->
+        <div>
+          <div class="sec-head">
+            <span class="sec-num">05</span>
+            <h2 class="sec-title">本行业主流产品的销售话术</h2>
+          </div>
+
+          <div class="pitch-box">
+            <div class="pitch-quote">“为电竞发烧而生”</div>
+            <span class="pitch-note">主要搭配视频呈现</span>
+          </div>
+        </div>
+
+        <!-- 07. 主流的视频呈现形式 -->
+        <div>
+          <div class="sec-head">
+            <span class="sec-num">07</span>
+            <h2 class="sec-title">主流的视频呈现形式</h2>
+          </div>
+
+          <div class="video-card">
+            <div class="video-showcase">
+              <div class="video-player-wrap">
+                <video id="inlineVideo" class="video-player" controls playsinline preload="metadata" poster="./assets/poster.jpg">
+                  <source src="./assets/demo.mp4" type="video/mp4" />
+                  您的浏览器暂不支持 HTML5 视频播放。
+                </video>
+              </div>
+
+              <div class="video-meta-col">
+                <div class="video-top">
+                  <span class="video-platform" id="videoPlatformEl">抖音精选电脑版 - 抖音旗下优质视频平台</span>
+                  <span class="video-duration" id="videoDurationEl">时长 01:03</span>
+                </div>
+
+                <div class="video-caption" id="videoCaptionEl">
+                  探访源头工厂，我参悟了 2026 最新游戏显示器选购指南！
+                </div>
+
+                <div class="video-tags" id="videoTagsEl">
+                  <span class="v-tag">#显示器</span>
+                  <span class="v-tag">#游戏外设</span>
+                  <span class="v-tag">#ChinaJoy</span>
+                  <span class="v-tag">#选购指南</span>
+                  <span class="v-tag">#抖音前沿科技首发计划</span>
+                </div>
+
+                <div class="video-link-bar" id="videoLinkBar" data-raw-command="8.94 :9pm kcN:/ 04/28 n@d.nQ 探访源头工厂，我参悟了 2026 最新游戏显示器选购指南！ # 显示器# 游戏外设# ChinaJoy# 选购指南# 抖音前沿科技首发计划 https://v.douyin.com/KNXIhlGi_zc/ 复制此链接，打开Dou音搜索，直接观看视频！">
+                  <div>
+                    <div id="videoLinkDesc" style="font-size:11px;color:var(--ink-muted);margin-bottom:2px;">原文档视频口令与链接（04/28）</div>
+                    <a id="videoUrlLink" href="https://v.douyin.com/KNXIhlGi_zc/" target="_blank" rel="noopener noreferrer">https://v.douyin.com/KNXIhlGi_zc/</a>
+                  </div>
+                  <div class="video-actions">
+                    <button class="copy-btn primary" id="expandVideoBtn" type="button">放大观看</button>
+                    <button class="copy-btn" id="copyDouyinBtn" type="button">复制原口令</button>
+                    <button class="copy-btn" id="editVideoCardBtn" type="button">编辑</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 行内视频卡片编辑面板 -->
+            <div class="video-editor-panel hidden" id="videoEditorPanel">
+              <div class="editor-grid-2">
+                <div class="editor-field">
+                  <label for="inputVideoPlatform">平台名称</label>
+                  <input id="inputVideoPlatform" type="text" />
+                </div>
+                <div class="editor-field">
+                  <label for="inputVideoDuration">时长标注</label>
+                  <input id="inputVideoDuration" type="text" />
+                </div>
+              </div>
+
+              <div class="editor-field">
+                <label for="inputVideoCaption">视频标题</label>
+                <input id="inputVideoCaption" type="text" />
+              </div>
+
+              <div class="editor-field">
+                <label for="inputVideoTags">话题标签（空格分隔）</label>
+                <input id="inputVideoTags" type="text" />
+              </div>
+
+              <div class="editor-field">
+                <label for="inputVideoUrl">视频链接 URL</label>
+                <input id="inputVideoUrl" type="url" />
+              </div>
+
+              <div class="editor-field">
+                <label for="inputVideoCommand">完整口令文案（用于“复制原口令”按钮）</label>
+                <textarea id="inputVideoCommand"></textarea>
+              </div>
+
+              <div class="editor-footer">
+                <div class="editor-upload-wrap">
+                  <input id="videoFileInput" type="file" accept="video/*" style="display:none;" />
+                  <button class="copy-btn" id="chooseVideoFileBtn" type="button">替换本地视频</button>
+                  <span class="editor-file-name" id="videoFileNameHint">当前已内置 01:03 原视频</span>
+                </div>
+                <div class="video-actions">
+                  <button class="copy-btn" id="cancelVideoEditBtn" type="button">取消</button>
+                  <button class="copy-btn primary" id="saveVideoEditBtn" type="button">保存修改</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 06. 不同人群的兴趣话题 ==================== -->
+    <section class="section-card reveal" id="sec-interests">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2 class="sec-title">不同人群的兴趣话题</h2>
+      </div>
+
+      <div class="interest-grid">
+        <div class="interest-card">
+          <span class="interest-num" style="--i-bg: var(--blue-soft); --i-color: var(--blue);">1</span>
+          <p>喜欢热门竞技类游戏玩家</p>
+        </div>
+
+        <div class="interest-card">
+          <span class="interest-num" style="--i-bg: var(--amber-soft); --i-color: var(--amber);">2</span>
+          <p>买显示器的人说不定也会因为装修整一套桌搭电竞椅之类的</p>
+        </div>
+
+        <div class="interest-card">
+          <span class="interest-num" style="--i-bg: var(--emerald-soft); --i-color: var(--emerald);">3</span>
+          <p>久坐之后喜欢去运动的人群</p>
+        </div>
+
+        <div class="interest-card">
+          <span class="interest-num" style="--i-bg: var(--rose-soft); --i-color: var(--rose);">4</span>
+          <p>长年看电脑身体可能也会出问题会吃保健品药物</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 08. 目标圈子的核心价值观 ==================== -->
+    <section class="section-card ethos-card reveal" id="sec-values">
+      <span class="ethos-kicker">08 · 目标圈子的核心价值观</span>
+      <blockquote>“下班时间就是拿来爽的，为什么不花钱买个好配置享受呢”</blockquote>
+    </section>
+
+    <footer class="footer">
+      整理来源：飞书云文档《数码显示屏》（作者：淮风衍）
+    </footer>
+  </main>
+
+  <div class="toast" id="toast">已复制视频口令到剪贴板</div>
+
+  <!-- 影院放大播放弹窗 -->
+  <div class="video-modal" id="videoModal" role="dialog" aria-modal="true" aria-label="视频放大播放">
+    <div class="video-modal-dialog">
+      <div class="video-modal-head">
+        <span>探访源头工厂 · 2026 游戏显示器选购指南（01:03）</span>
+        <button class="modal-close" id="closeModalBtn" type="button" aria-label="关闭弹窗">×</button>
+      </div>
+      <video id="modalVideo" class="video-modal-player" controls playsinline preload="none"></video>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 初始化轻量化交互：主题切换、滚动进度条、导航高亮、渐显动效与口令复制
+     */
+    (function () {
+      "use strict";
+
+      document.documentElement.classList.add("js-animate");
+
+      // 1. 亮色 / 深色模式切换
+      const htmlEl = document.documentElement;
+      const themeToggle = document.getElementById("themeToggle");
+      const themeIcon = document.getElementById("themeIcon");
+      const themeLabel = document.getElementById("themeLabel");
+
+      themeToggle.addEventListener("click", () => {
+        const isLight = htmlEl.getAttribute("data-theme") === "light";
+        htmlEl.setAttribute("data-theme", isLight ? "dark" : "light");
+        themeIcon.textContent = isLight ? "☀️" : "🌙";
+        themeLabel.textContent = isLight ? "浅色模式" : "深色模式";
+      });
+
+      // 2. 阅读进度条与导航栏当前章节高亮
+      const progressBar = document.getElementById("scrollProgress");
+      const navLinks = Array.from(document.querySelectorAll(".nav-links a"));
+      const sections = navLinks
+        .map((a) => document.querySelector(a.getAttribute("href")))
+        .filter(Boolean);
+
+      function updateScroll() {
+        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
+        progressBar.style.width = Math.min(100, Math.max(0, pct)) + "%";
+
+        let activeId = sections[0] ? sections[0].id : "";
+        for (const sec of sections) {
+          if (sec.getBoundingClientRect().top <= 150) {
+            activeId = sec.id;
+          }
+        }
+        navLinks.forEach((a) => {
+          a.classList.toggle("active", a.getAttribute("href") === "#" + activeId);
+        });
+      }
+
+      window.addEventListener("scroll", updateScroll, { passive: true });
+      updateScroll();
+
+      // 3. 滚入视野柔和浮现
+      const reveals = document.querySelectorAll(".reveal");
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-visible");
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
+        );
+        reveals.forEach((el) => observer.observe(el));
+      } else {
+        reveals.forEach((el) => el.classList.add("is-visible"));
+      }
+
+      // 4. 一键复制抖音视频原口令（从 DOM data 属性动态读取，保证编辑与导出后同步）
+      const copyBtn = document.getElementById("copyDouyinBtn");
+      const toast = document.getElementById("toast");
+      const videoLinkBar = document.getElementById("videoLinkBar");
+
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2200);
+      }
+
+      copyBtn.addEventListener("click", async () => {
+        const currentCmd = videoLinkBar.dataset.rawCommand || "";
+        try {
+          await navigator.clipboard.writeText(currentCmd);
+          showToast("已复制视频口令到剪贴板");
+        } catch (err) {
+          showToast("请手动复制上方链接文本");
+        }
+      });
+
+      // 5. 内嵌视频影院放大播放弹窗联动
+      const inlineVideo = document.getElementById("inlineVideo");
+      const modalEl = document.getElementById("videoModal");
+      const modalVideo = document.getElementById("modalVideo");
+      const expandBtn = document.getElementById("expandVideoBtn");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+
+      function openVideoModal() {
+        const inlineSource = inlineVideo.querySelector("source");
+        if (inlineSource) {
+          const latestSrc = inlineSource.getAttribute("src");
+          if (modalVideo.getAttribute("src") !== latestSrc) {
+            modalVideo.setAttribute("src", latestSrc);
+          }
+        }
+        const resumeTime = inlineVideo.currentTime || 0;
+        inlineVideo.pause();
+        modalEl.classList.add("open");
+        modalVideo.currentTime = resumeTime;
+        modalVideo.play().catch(() => {});
+      }
+
+      function closeVideoModal() {
+        if (!modalEl.classList.contains("open")) return;
+        const resumeTime = modalVideo.currentTime || 0;
+        modalVideo.pause();
+        modalEl.classList.remove("open");
+        if (!Number.isNaN(resumeTime)) {
+          inlineVideo.currentTime = resumeTime;
+        }
+      }
+
+      expandBtn.addEventListener("click", openVideoModal);
+      closeModalBtn.addEventListener("click", closeVideoModal);
+      modalEl.addEventListener("click", (e) => {
+        if (e.target === modalEl) closeVideoModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeVideoModal();
+      });
+
+      // 6. 07 视频卡片行内编辑 + 全文档可视化编辑与持久化导出
+      const STORAGE_KEY = "monitor_doc_editable_state_v1";
+      const toggleEditBtn = document.getElementById("toggleEditModeBtn");
+      const exportHtmlBtn = document.getElementById("exportHtmlBtn");
+      const resetEditBtn = document.getElementById("resetEditBtn");
+
+      const videoPlatformEl = document.getElementById("videoPlatformEl");
+      const videoDurationEl = document.getElementById("videoDurationEl");
+      const videoCaptionEl = document.getElementById("videoCaptionEl");
+      const videoTagsEl = document.getElementById("videoTagsEl");
+      const videoUrlLink = document.getElementById("videoUrlLink");
+
+      const editVideoCardBtn = document.getElementById("editVideoCardBtn");
+      const videoEditorPanel = document.getElementById("videoEditorPanel");
+      const inputVideoPlatform = document.getElementById("inputVideoPlatform");
+      const inputVideoDuration = document.getElementById("inputVideoDuration");
+      const inputVideoCaption = document.getElementById("inputVideoCaption");
+      const inputVideoTags = document.getElementById("inputVideoTags");
+      const inputVideoUrl = document.getElementById("inputVideoUrl");
+      const inputVideoCommand = document.getElementById("inputVideoCommand");
+      const saveVideoEditBtn = document.getElementById("saveVideoEditBtn");
+      const cancelVideoEditBtn = document.getElementById("cancelVideoEditBtn");
+      const videoFileInput = document.getElementById("videoFileInput");
+      const chooseVideoFileBtn = document.getElementById("chooseVideoFileBtn");
+      const videoFileNameHint = document.getElementById("videoFileNameHint");
+
+      // 全文档允许直接点击编辑的文案节点选择器
+      const EDITABLE_SELECTOR = [
+        ".hero .meta-pill",
+        ".hero h1",
+        ".hero-subtitle",
+        ".index-chip span",
+        ".index-chip strong",
+        ".sec-title",
+        ".tier-badge",
+        ".tier-price",
+        ".tier-items li",
+        ".tier-service",
+        ".channel-name",
+        ".channel-card p",
+        ".demand-tag",
+        ".demand-text",
+        ".psych-label",
+        ".psych-card p",
+        ".term-pill",
+        ".pitch-quote",
+        ".pitch-note",
+        ".interest-card p",
+        ".ethos-kicker",
+        ".ethos-card blockquote",
+        ".footer",
+        "#videoPlatformEl",
+        "#videoDurationEl",
+        "#videoCaptionEl",
+        "#videoLinkDesc"
+      ].join(", ");
+
+      function getEditableNodes() {
+        return Array.from(document.querySelectorAll(EDITABLE_SELECTOR));
+      }
+
+      function saveDocumentState() {
+        try {
+          const texts = getEditableNodes().map((el) => el.innerText);
+          const tags = Array.from(videoTagsEl.querySelectorAll(".v-tag"))
+            .map((t) => t.textContent.trim())
+            .filter(Boolean);
+          const payload = {
+            texts,
+            videoMeta: {
+              platform: videoPlatformEl.textContent.trim(),
+              duration: videoDurationEl.textContent.trim(),
+              caption: videoCaptionEl.textContent.trim(),
+              tags,
+              url: videoUrlLink.getAttribute("href") || "",
+              rawCommand: videoLinkBar.dataset.rawCommand || ""
+            }
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (err) {
+          // 忽略隐私模式或配额限制错误
+        }
+      }
+
+      function restoreDocumentState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (Array.isArray(data.texts)) {
+            const nodes = getEditableNodes();
+            data.texts.forEach((txt, i) => {
+              if (nodes[i] && typeof txt === "string") {
+                nodes[i].innerText = txt;
+              }
+            });
+          }
+          if (data.videoMeta) {
+            const m = data.videoMeta;
+            if (m.platform) videoPlatformEl.textContent = m.platform;
+            if (m.duration) videoDurationEl.textContent = m.duration;
+            if (m.caption) videoCaptionEl.textContent = m.caption;
+            if (Array.isArray(m.tags) && m.tags.length) {
+              videoTagsEl.innerHTML = "";
+              m.tags.forEach((tagText) => {
+                const span = document.createElement("span");
+                span.className = "v-tag";
+                span.textContent = tagText;
+                videoTagsEl.appendChild(span);
+              });
+            }
+            if (m.url) {
+              videoUrlLink.setAttribute("href", m.url);
+              videoUrlLink.textContent = m.url;
+            }
+            if (typeof m.rawCommand === "string") {
+              videoLinkBar.dataset.rawCommand = m.rawCommand;
+            }
+          }
+        } catch (err) {
+          // 忽略无效缓存
+        }
+      }
+
+      restoreDocumentState();
+
+      // 编辑模式下点击文字自动防抖保存，且防止索引链接跳转
+      let saveTimer = null;
+      document.addEventListener("input", (e) => {
+        if (!document.body.classList.contains("is-editing")) return;
+        if (e.target && e.target.getAttribute("contenteditable") === "true") {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(saveDocumentState, 250);
+        }
+      });
+
+      document.querySelectorAll(".index-chip").forEach((chip) => {
+        chip.addEventListener("click", (e) => {
+          if (document.body.classList.contains("is-editing")) {
+            e.preventDefault();
+          }
+        });
+      });
+
+      function setEditMode(enabled) {
+        document.body.classList.toggle("is-editing", enabled);
+        toggleEditBtn.classList.toggle("is-active", enabled);
+        toggleEditBtn.textContent = enabled ? "✅ 完成编辑" : "✏️ 编辑文档";
+        getEditableNodes().forEach((el) => {
+          if (enabled) {
+            el.setAttribute("contenteditable", "true");
+          } else {
+            el.removeAttribute("contenteditable");
+          }
+        });
+        if (!enabled) {
+          saveDocumentState();
+          showToast("已退出编辑模式并自动保存");
+        }
+      }
+
+      toggleEditBtn.addEventListener("click", () => {
+        setEditMode(!document.body.classList.contains("is-editing"));
+      });
+
+      // 打开 / 关闭 07 卡片行内编辑面板
+      function openVideoEditor() {
+        inputVideoPlatform.value = videoPlatformEl.textContent.trim();
+        inputVideoDuration.value = videoDurationEl.textContent.trim();
+        inputVideoCaption.value = videoCaptionEl.textContent.trim();
+        inputVideoTags.value = Array.from(videoTagsEl.querySelectorAll(".v-tag"))
+          .map((t) => t.textContent.trim())
+          .join(" ");
+        inputVideoUrl.value = videoUrlLink.getAttribute("href") || "";
+        inputVideoCommand.value = videoLinkBar.dataset.rawCommand || "";
+        videoEditorPanel.classList.remove("hidden");
+        editVideoCardBtn.textContent = "收起";
+      }
+
+      function closeVideoEditor() {
+        videoEditorPanel.classList.add("hidden");
+        editVideoCardBtn.textContent = "编辑";
+      }
+
+      editVideoCardBtn.addEventListener("click", () => {
+        if (videoEditorPanel.classList.contains("hidden")) {
+          openVideoEditor();
+        } else {
+          closeVideoEditor();
+        }
+      });
+
+      cancelVideoEditBtn.addEventListener("click", closeVideoEditor);
+
+      saveVideoEditBtn.addEventListener("click", () => {
+        const nextPlatform = inputVideoPlatform.value.trim();
+        const nextDuration = inputVideoDuration.value.trim();
+        const nextCaption = inputVideoCaption.value.trim();
+        const nextUrl = inputVideoUrl.value.trim();
+        const nextTags = inputVideoTags.value.trim().split(/\s+/).filter(Boolean);
+        const nextCmd = inputVideoCommand.value.trim();
+
+        if (nextPlatform) videoPlatformEl.textContent = nextPlatform;
+        if (nextDuration) videoDurationEl.textContent = nextDuration;
+        if (nextCaption) videoCaptionEl.textContent = nextCaption;
+
+        videoTagsEl.innerHTML = "";
+        nextTags.forEach((rawTag) => {
+          const span = document.createElement("span");
+          span.className = "v-tag";
+          span.textContent = rawTag.startsWith("#") ? rawTag : "#" + rawTag;
+          videoTagsEl.appendChild(span);
+        });
+
+        if (nextUrl) {
+          const safeUrl = /^(https?:\/\/|mailto:|\/)/i.test(nextUrl) ? nextUrl : "https://" + nextUrl;
+          videoUrlLink.setAttribute("href", safeUrl);
+          videoUrlLink.textContent = safeUrl;
+        }
+        videoLinkBar.dataset.rawCommand = nextCmd;
+
+        saveDocumentState();
+        closeVideoEditor();
+        showToast("已保存视频与链接修改");
+      });
+
+      // 本地替换视频文件
+      chooseVideoFileBtn.addEventListener("click", () => videoFileInput.click());
+      videoFileInput.addEventListener("change", () => {
+        const file = videoFileInput.files && videoFileInput.files[0];
+        if (!file) return;
+        videoFileNameHint.textContent = "正在读取：" + file.name + "...";
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          const inlineSource = inlineVideo.querySelector("source");
+          if (inlineSource && typeof dataUrl === "string") {
+            inlineSource.setAttribute("src", dataUrl);
+            inlineSource.setAttribute("type", file.type || "video/mp4");
+            inlineVideo.removeAttribute("poster");
+            inlineVideo.load();
+            modalVideo.removeAttribute("src");
+            videoFileNameHint.textContent = "已加载新视频：" + file.name;
+            showToast("已替换本地视频（导出 HTML 可永久保存）");
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // 导出独立的新版 HTML 文件（含所有编辑文本与当前视频）
+      exportHtmlBtn.addEventListener("click", () => {
+        saveDocumentState();
+        const clone = document.documentElement.cloneNode(true);
+        const cloneBody = clone.querySelector("body");
+        if (cloneBody) cloneBody.classList.remove("is-editing");
+        clone.querySelectorAll("[contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
+
+        const cloneToggle = clone.querySelector("#toggleEditModeBtn");
+        if (cloneToggle) {
+          cloneToggle.classList.remove("is-active");
+          cloneToggle.textContent = "✏️ 编辑文档";
+        }
+        const clonePanel = clone.querySelector("#videoEditorPanel");
+        if (clonePanel) clonePanel.classList.add("hidden");
+        const cloneEditBtn = clone.querySelector("#editVideoCardBtn");
+        if (cloneEditBtn) cloneEditBtn.textContent = "编辑";
+        const cloneModal = clone.querySelector("#videoModal");
+        if (cloneModal) cloneModal.classList.remove("open");
+        const cloneModalVideo = clone.querySelector("#modalVideo");
+        if (cloneModalVideo) cloneModalVideo.removeAttribute("src");
+        const cloneToast = clone.querySelector("#toast");
+        if (cloneToast) cloneToast.classList.remove("show");
+        const cloneProgress = clone.querySelector("#scrollProgress");
+        if (cloneProgress) cloneProgress.style.width = "0%";
+
+        const blob = new Blob(["<!DOCTYPE html>\n" + clone.outerHTML], { type: "text/html;charset=utf-8" });
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = dlUrl;
+        a.download = "数码显示屏-可编辑版.html";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(dlUrl), 1000);
+        showToast("已导出新版独立 HTML 文件");
+      });
+
+      // 恢复默认内容
+      resetEditBtn.addEventListener("click", () => {
+        if (!window.confirm("确定要清除本地编辑记录并恢复初始飞书文档内容吗？")) return;
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (err) {
+          // 忽略错误
+        }
+        window.location.reload();
+      });
+    })();
+  </script>
+</body>
+</html>
